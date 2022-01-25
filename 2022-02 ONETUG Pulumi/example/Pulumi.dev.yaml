@@ -1,0 +1,11 @@
+config:
+  azure-native:location: eastus
+  onetug-example:location: eastus
+  onetug-example:resource-group-name: example-rg
+  onetug-example:environment: dev
+  onetug-example:app-service:
+    ServicePlanName: MyServicePlan
+    WebAppName: MyWebApp
+    Tier: Free
+    TierName: F1
+  pulumi:template: azure-csharp
