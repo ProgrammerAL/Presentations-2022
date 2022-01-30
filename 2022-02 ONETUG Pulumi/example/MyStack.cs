@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
+using ProgrammerAl.OnetugExample;
 using ProgrammerAl.OnetugExample.Config;
 
 using Pulumi;
 using Pulumi.AzureNative.Resources;
 using Pulumi.AzureNative.Storage;
-using Pulumi.AzureNative.Storage.Inputs;
 using Pulumi.AzureNative.Web;
 using Pulumi.AzureNative.Web.Inputs;
 
@@ -17,26 +19,23 @@ class MyStack : Stack
         var config = new Config();
         var globalConfig = LoadGlobalConfig(config);
         var appServiceConfig = config.RequireObject<AppServiceConfigDto>("app-service").GenerateValidConfigObject();
-
-        // Create an Azure Resource Group
+        
         var resourceGroup = new ResourceGroup(globalConfig.ResourceGroupName);
 
         CreateAppService(resourceGroup, appServiceConfig);
+        CreateStorageAccount(resourceGroup, globalConfig);
 
-        // Create an Azure resource (Storage Account)
-        var storageAccount = new StorageAccount("sa", new StorageAccountArgs
+        CreateSecret();
+    }
+
+    private void CreateSecret()
+    {
+        var randomPassword = new Pulumi.Random.RandomPassword("api-app-microsoft-provider-auth-secret", new Pulumi.Random.RandomPasswordArgs
         {
-            ResourceGroupName = resourceGroup.Name,
-            Sku = new SkuArgs
-            {
-                Name = SkuName.Standard_LRS
-            },
-            Kind = Kind.StorageV2
+            Length = 100
         });
 
-        // Export the primary key of the Storage Account
-        this.PrimaryStorageKey = Output.Tuple(resourceGroup.Name, storageAccount.Name).Apply(names =>
-            Output.CreateSecret(GetStorageAccountPrimaryKey(names.Item1, names.Item2)));
+        RandomPassword = randomPassword.Result.Apply(Output.CreateSecret);
     }
 
     private void CreateAppService(ResourceGroup resourceGroup, AppServiceConfig appServiceConfig)
@@ -60,13 +59,30 @@ class MyStack : Stack
             ResourceGroupName = resourceGroup.Name,
             ServerFarmId = appServicePlan.Id,
             HttpsOnly = true,
-            //SiteConfig = functionAppSiteConfig,
             ClientAffinityEnabled = false
         });
 
         WebAppEndpoint = webApp.DefaultHostName;
     }
 
+    private void CreateStorageAccount(ResourceGroup resourceGroup, GlobalConfig globalConfig)
+    {
+        // Create an Azure resource (Storage Account)
+        var storageAccount = new StorageAccount(globalConfig.StorageAccountName, new StorageAccountArgs
+        {
+            ResourceGroupName = resourceGroup.Name,
+            Sku = new Pulumi.AzureNative.Storage.Inputs.SkuArgs
+            {
+                Name = SkuName.Standard_LRS
+            },
+            Kind = Kind.StorageV2
+        });
+
+        // Export the primary key of the Storage Account
+        PrimaryStorageKey = Output.Tuple(resourceGroup.Name, storageAccount.Name).Apply(names =>
+            Output.CreateSecret(GetStorageAccountPrimaryKey(names.Item1, names.Item2)));
+    }
+    
     private static async Task<string> GetStorageAccountPrimaryKey(string resourceGroupName, string accountName)
     {
         var accountKeys = await ListStorageAccountKeys.InvokeAsync(new ListStorageAccountKeysArgs
@@ -82,8 +98,9 @@ class MyStack : Stack
         string location = config.Require("location");
         string resourceGroupName = config.Require("resource-group-name");
         string environment = config.Require("environment");
+        string storageAccountName = config.Require("storage-account-name");
 
-        return new GlobalConfig(location, resourceGroupName, environment);
+        return new GlobalConfig(location, resourceGroupName, environment, storageAccountName);
     }
 
     [Output]
@@ -91,4 +108,7 @@ class MyStack : Stack
 
     [Output]
     public Output<string>? WebAppEndpoint { get; set; }
+
+    [Output]
+    public Output<string>? RandomPassword { get; set; }
 }

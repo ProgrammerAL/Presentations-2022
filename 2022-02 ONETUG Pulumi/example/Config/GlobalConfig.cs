@@ -11,4 +11,5 @@ namespace ProgrammerAl.OnetugExample.Config;
 public record GlobalConfig(
     string Location,
     string ResourceGroupName,
-    string Environment);
+    string Environment,
+    string StorageAccountName);
