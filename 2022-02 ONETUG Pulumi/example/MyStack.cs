@@ -23,7 +23,7 @@ class MyStack : Stack
         var resourceGroup = new ResourceGroup(globalConfig.ResourceGroupName);
 
         CreateAppService(resourceGroup, appServiceConfig);
-        CreateStorageAccount(resourceGroup, globalConfig);
+        //CreateStorageAccount(resourceGroup, globalConfig);
 
         CreateSecret();
     }
