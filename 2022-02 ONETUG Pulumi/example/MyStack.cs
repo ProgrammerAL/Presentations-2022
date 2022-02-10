@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-using ProgrammerAl.OnetugExample;
 using ProgrammerAl.OnetugExample.Config;
 
 using Pulumi;
@@ -16,6 +15,7 @@ class MyStack : Stack
 {
     public MyStack()
     {
+        //Load values from Config
         var config = new Config();
         var globalConfig = LoadGlobalConfig(config);
         var appServiceConfig = config.RequireObject<AppServiceConfigDto>("app-service").GenerateValidConfigObject();
